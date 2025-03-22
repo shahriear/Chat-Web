@@ -1,0 +1,10 @@
+# Node.js
+node_modules/
+
+# IDEs and Editors
+.vscode/
+
+# dotenv environment files
+# .env
+# .env.local
+
