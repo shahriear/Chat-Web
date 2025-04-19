@@ -1,5 +1,5 @@
 const nodemailer = require('nodemailer');
-const sendMail = async (email, subject, template, otp) => {
+const sendMail = async (email, subject, template, random) => {
   //Send this generate OTP to the user email..
 
   const transporter = nodemailer.createTransport({
@@ -16,7 +16,7 @@ const sendMail = async (email, subject, template, otp) => {
     to: email, // list of receivers
     subject: subject, // Subject line
     // text: 'Hello world?', // plain text body
-    html: template(otp), // html body
+    html: template(random, email), // html body
   });
 };
 

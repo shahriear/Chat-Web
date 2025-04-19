@@ -1,9 +1,14 @@
 const { emailValidators } = require('../helpers/emailValidators');
 const { sendMail } = require('../helpers/mail');
 const validatePassword = require('../helpers/passValidator');
-const { verifyEmailTemplate } = require('../helpers/templates');
+const {
+  verifyEmailTemplate,
+  resetPassTemplate,
+} = require('../helpers/templates');
 const userSchema = require('../models/userSchema');
+const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const generateRandomString = require('../helpers/generateRandomString');
 
 //Registration Controller========
 
@@ -35,13 +40,14 @@ const Registration = async (req, res) => {
       otpExpiredAt: new Date(Date.now() + 5 * 60 * 1000),
     });
     user.save();
+    //Send this generate otp to the user email
     sendMail(email, 'Verify your email.', verifyEmailTemplate, randomOtp);
     res.status(201).send('Registration Successfull! please verify your Email.');
   } catch (error) {
     res.status(500).send('Server error');
   }
 };
-
+//verify EmailAddress ======================
 const verifyEmailAddress = async (req, res) => {
   const { email, otp } = req.body;
   try {
@@ -67,16 +73,94 @@ const verifyEmailAddress = async (req, res) => {
 //Loging Controller========
 const LoginController = async (req, res) => {
   const { email, password } = req.body;
-  if (!email) return res.status(400).send('Email is required!');
-  if (emailValidators(email))
-    return res.status(400).send('Email is not Valid!');
-  if (!password) return res.status(400).send('Password is required!');
-  const existingUser = await userSchema.findOne({ email });
-  const passCheck = await existingUser.isPasswordValid(password);
-  if (!passCheck) return res.status(404).send('Wrong Password');
-  res.status(200).send('Login Successfull');
+  try {
+    if (!email) return res.status(400).send('Email is required!');
+    if (emailValidators(email))
+      return res.status(400).send('Email is not Valid!');
+    if (!password) return res.status(400).send('Password is required!');
+    const existingUser = await userSchema.findOne({ email });
+    if (!existingUser) return res.status(400).send('User Not Found !');
+    const passCheck = await existingUser.isPasswordValid(password);
+    if (!passCheck) return res.status(400).send('Wrong Password');
+    if (!existingUser.isVarified)
+      return res.status(400).send('Email is Not Verified !');
+
+    const accessToken = jwt.sign(
+      {
+        data: {
+          email: existingUser.email,
+          id: existingUser._id,
+        },
+      },
+      process.env.JWT_SEC,
+      { expiresIn: '24h' }
+    );
+    const loggedUser = {
+      email: existingUser.email,
+      _id: existingUser._id,
+      fullName: existingUser.fullName,
+      avatar: existingUser.avatar,
+      isVarified: existingUser.isVarified,
+      createdAt: existingUser.createdAt,
+      updatedAt: existingUser.updatedAt,
+    };
+    res.status(200).send({
+      message: 'Login Successfull',
+      user: loggedUser,
+      existingUser,
+      accessToken,
+    });
+  } catch (error) {
+    res.status(500).send('Server error');
+  }
 };
 
-module.exports = { Registration, verifyEmailAddress, LoginController };
+//Forget Password   =========================
+const forgetPass = async (req, res) => {
+  const { email } = req.body;
+  try {
+    if (!email) return res.status(400).send('Email is required!');
+    const existingUser = await userSchema.findOne({ email });
+    if (!existingUser) return res.status(400).send('User Not Found !');
+    const randomString = generateRandomString(28);
+    existingUser.resetPassId = randomString;
+    existingUser.resetpassExpiredAt = new Date(Date.now() + 10 * 60 * 1000);
+    existingUser.save();
 
-// 13:41
+    //Send reset pass email
+    sendMail(email, 'Reset Password.', resetPassTemplate, randomString);
+
+    res.status(201).send('Check your email');
+  } catch (error) {
+    res.status(500).send('Server error');
+  }
+};
+
+// Reset Password   ========================
+const resetPass = async (req, res) => {
+  const { newPass } = req.body;
+  const randomString = req.params.randomstring;
+  const email = req.query.email;
+  const existingUser = await userSchema.findOne({
+    email,
+    resetPassId: randomString,
+
+    resetpassExpiredAt: { $gt: Date.now() },
+  });
+  if (!existingUser) return res.status(400).send('invalid Request');
+  if (!newPass) return res.status(400).send('input your new password');
+  existingUser.password = newPass;
+  existingUser.resetPassId = null;
+  existingUser.resetpassExpiredAt = null;
+
+  existingUser.save();
+  res.send('Reset password Successfull !');
+};
+
+module.exports = {
+  Registration,
+  verifyEmailAddress,
+  LoginController,
+  forgetPass,
+  resetPass,
+};
