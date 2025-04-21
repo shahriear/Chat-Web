@@ -7,8 +7,11 @@ const {
 } = require('../helpers/templates');
 const userSchema = require('../models/userSchema');
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
+const fs = require('fs');
+
 const generateRandomString = require('../helpers/generateRandomString');
+const cloudinary = require('../helpers/cloudinary');
+const { log } = require('console');
 
 //Registration Controller========
 
@@ -157,10 +160,38 @@ const resetPass = async (req, res) => {
   res.send('Reset password Successfull !');
 };
 
+//Update profile ========
+const Update = async (req, res) => {
+  const { fullName, password, avatar } = req.body;
+  const updatedFields = {};
+  if (fullName) updatedFields.fullName = fullName.trim();
+  if (password) updatedFields.password = password;
+  if (avatar) updatedFields.avatar = avatar;
+
+  cloudinary.uploader.upload(req.file.path, (error, result) => {
+    if (error) {
+      console.log(error);
+      return res.status(500).json({ error: 'Error uploading to Cloudinary' });
+    }
+    console.log(result);
+    console.log(req.file.path);
+
+    fs.unlinkSync(req.file.path);
+  });
+
+  const existingUser = await userSchema.findByIdAndUpdate(
+    '6803ac7822be98d01a569eea',
+    updatedFields,
+    { new: true }
+  );
+  res.send(existingUser);
+};
+
 module.exports = {
   Registration,
   verifyEmailAddress,
   LoginController,
   forgetPass,
   resetPass,
+  Update,
 };
