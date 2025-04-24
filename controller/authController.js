@@ -11,7 +11,7 @@ const fs = require('fs');
 
 const generateRandomString = require('../helpers/generateRandomString');
 const cloudinary = require('../helpers/cloudinary');
-const { log } = require('console');
+const { time } = require('console');
 
 //Registration Controller========
 
@@ -141,50 +141,53 @@ const forgetPass = async (req, res) => {
 
 // Reset Password   ========================
 const resetPass = async (req, res) => {
-  const { newPass } = req.body;
-  const randomString = req.params.randomstring;
-  const email = req.query.email;
-  const existingUser = await userSchema.findOne({
-    email,
-    resetPassId: randomString,
+  try {
+    const { newPass } = req.body;
+    const randomString = req.params.randomstring;
+    const email = req.query.email;
+    const existingUser = await userSchema.findOne({
+      email,
+      resetPassId: randomString,
 
-    resetpassExpiredAt: { $gt: Date.now() },
-  });
-  if (!existingUser) return res.status(400).send('invalid Request');
-  if (!newPass) return res.status(400).send('input your new password');
-  existingUser.password = newPass;
-  existingUser.resetPassId = null;
-  existingUser.resetpassExpiredAt = null;
+      resetpassExpiredAt: { $gt: Date.now() },
+    });
+    if (!existingUser) return res.status(400).send('invalid Request');
+    if (!newPass) return res.status(400).send('input your new password');
+    existingUser.password = newPass;
+    existingUser.resetPassId = null;
+    existingUser.resetpassExpiredAt = null;
 
-  existingUser.save();
-  res.send('Reset password Successfull !');
+    existingUser.save();
+    res.send('Reset password Successfull !');
+  } catch (error) {
+    res.status(500).send('Server error !');
+  }
 };
 
 //Update profile ========
 const Update = async (req, res) => {
-  const { fullName, password, avatar } = req.body;
-  const updatedFields = {};
-  if (fullName) updatedFields.fullName = fullName.trim();
-  if (password) updatedFields.password = password;
-  if (avatar) updatedFields.avatar = avatar;
+  const { fullName, password } = req.body;
+  try {
+    const existingUser = await userSchema.findById(req.user.id);
 
-  cloudinary.uploader.upload(req.file.path, (error, result) => {
-    if (error) {
-      console.log(error);
-      return res.status(500).json({ error: 'Error uploading to Cloudinary' });
+    if (fullName) existingUser.fullName = fullName.trim();
+    if (password) existingUser.password = password;
+
+    if (req.file.path) {
+      await cloudinary.uploader.destroy(
+        existingUser.avatar.split('/').pop().split('.')[0]
+      );
+
+      const result = await cloudinary.uploader.upload(req.file.path);
+      existingUser.avatar = result.url;
+      fs.unlinkSync(req.file.path);
     }
-    console.log(result);
-    console.log(req.file.path);
+    existingUser.save();
 
-    fs.unlinkSync(req.file.path);
-  });
-
-  const existingUser = await userSchema.findByIdAndUpdate(
-    '6803ac7822be98d01a569eea',
-    updatedFields,
-    { new: true }
-  );
-  res.send(existingUser);
+    res.status(200).send(existingUser);
+  } catch (error) {
+    res.status(500).send('Server error !');
+  }
 };
 
 module.exports = {
@@ -195,3 +198,5 @@ module.exports = {
   resetPass,
   Update,
 };
+
+// time:done video nxt--> 25
