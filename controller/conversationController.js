@@ -7,6 +7,9 @@ const createConversation = async (req, res) => {
     if (!participentEmail) {
       return res.status(400).send({ error: 'Participent Email is Required!' });
     }
+    if (participentEmail === req.user.email) {
+      return res.status(400).send({ error: 'Try With Another Email!' });
+    }
     const participentData = await userSchema.findOne({
       email: participentEmail,
     });
@@ -19,8 +22,26 @@ const createConversation = async (req, res) => {
     });
     conversation.save();
     res.status(200).send(conversation);
-  } catch (error) {}
-
-  res.send('creat Convartation');
+  } catch (error) {
+    res.status(500).send('Server error');
+  }
 };
-module.exports = { createConversation };
+
+const conversationList = async (req, res) => {
+  try {
+    const conversation = await conversationSchema
+      .find({
+        $or: [{ creator: req.user.id }, { participent: req.user.id }],
+      })
+      .populate('creator', 'fullName avatar email')
+      .populate('participent', 'fullName avatar email')
+      .populate('lastMessage');
+    if (!conversation) {
+      return res.status(400).send('No Conversation Found !');
+    }
+    res.status(200).send(conversation);
+  } catch (error) {
+    res.status(500).send('Server error');
+  }
+};
+module.exports = { createConversation, conversationList };
