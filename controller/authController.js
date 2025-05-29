@@ -11,24 +11,29 @@ const fs = require('fs');
 
 const generateRandomString = require('../helpers/generateRandomString');
 const cloudinary = require('../helpers/cloudinary');
-const { time } = require('console');
+const { time, error } = require('console');
 
 //Registration Controller========
 
 const Registration = async (req, res) => {
-  const { fullName, email, password, avatar } = req.body;
+  const { email, fullName, password, avatar } = req.body;
 
   try {
-    if (!fullName) return res.status(400).send('Name is required!');
-    if (!email) return res.status(400).send('Email is required!');
-    if (!password) return res.status(400).send('Password is required!');
+    if (!email) return res.status(400).send({ error: 'Email is required!' });
+    if (!fullName) return res.status(400).send({ error: 'Name is required!' });
+
+    if (!password)
+      return res.status(400).send({ error: 'Password is required!' });
     if (emailValidators(email))
-      return res.status(400).send('Email is not Valid!');
+      return res.status(400).send({ error: 'Email is not Valid!' });
     const existingUser = await userSchema.findOne({ email });
-    if (existingUser) return res.status(400).send('Email alredy exist!');
+    if (existingUser)
+      return res.status(400).send({ error: 'Email already exist!' });
     const passwordValidResult = validatePassword(password);
     if (passwordValidResult) {
-      return res.status(400).send(passwordValidResult);
+      return res.status(400).send({
+        error: passwordValidResult.message || 'Password is not valid!',
+      });
     }
     //Generate random 4 digit OTP Number
     const randomOtp = Math.floor(Math.random() * 9000);
@@ -45,31 +50,34 @@ const Registration = async (req, res) => {
     user.save();
     //Send this generate otp to the user email
     sendMail(email, 'Verify your email.', verifyEmailTemplate, randomOtp);
-    res.status(201).send('Registration Successfull! please verify your Email.');
+    res
+      .status(201)
+      .send({ success: 'Registration Successfull! please verify your Email.' });
   } catch (error) {
-    res.status(500).send('Server error');
+    res.status(500).send({ error: 'Server error' });
   }
 };
 //verify EmailAddress ======================
 const verifyEmailAddress = async (req, res) => {
   const { email, otp } = req.body;
   try {
-    if (!email || !otp) return res.status(400).send('invalid request!');
+    if (!email || !otp)
+      return res.status(400).send({ error: 'invalid request!' });
 
     const verifiedUser = await userSchema.findOne({
       email,
       otp,
       otpExpiredAt: { $gt: Date.now() },
     });
-    if (!verifiedUser) return res.status(400).send('invalid OTP');
+    if (!verifiedUser) return res.status(400).send({ error: 'invalid OTP' });
 
     verifiedUser.otp = null;
     verifiedUser.otpExpiredAt = null;
     verifiedUser.isVarified = true;
     verifiedUser.save();
-    res.status(200).send('Email Verified successfully!');
+    res.status(200).send({ success: 'Email Verified successfully!' });
   } catch (error) {
-    res.status(500).send('Server error');
+    res.status(500).send({ error: 'Server error' });
   }
 };
 

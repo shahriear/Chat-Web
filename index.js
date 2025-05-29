@@ -4,9 +4,10 @@ const router = require('./routes');
 require('dotenv').config();
 const { Server } = require('socket.io');
 const httpServer = require('http').createServer();
+const cors = require('cors');
 const app = express();
 app.use(express.json());
-
+app.use(cors());
 const io = new Server(httpServer, {
   cors: '*',
 });
