@@ -11,7 +11,7 @@ const fs = require('fs');
 
 const generateRandomString = require('../helpers/generateRandomString');
 const cloudinary = require('../helpers/cloudinary');
-const { time, error } = require('console');
+const { time, error, log } = require('console');
 
 //Registration Controller========
 
@@ -82,19 +82,23 @@ const verifyEmailAddress = async (req, res) => {
 };
 
 //Loging Controller========
+
 const LoginController = async (req, res) => {
   const { email, password } = req.body;
   try {
-    if (!email) return res.status(400).send('Email is required!');
+    if (!email) return res.status(400).send({ error: 'Email is required!' });
     if (emailValidators(email))
-      return res.status(400).send('Email is not Valid!');
-    if (!password) return res.status(400).send('Password is required!');
+      return res.status(400).send({ error: 'Email is not Valid!' });
+    if (!password)
+      return res.status(400).send({ error: 'Password is required!' });
     const existingUser = await userSchema.findOne({ email });
-    if (!existingUser) return res.status(400).send('User Not Found !');
+    if (!existingUser)
+      return res.status(400).send({ error: 'User Not Found !' });
+
     const passCheck = await existingUser.isPasswordValid(password);
-    if (!passCheck) return res.status(400).send('Wrong Password');
+    if (!passCheck) return res.status(400).send({ error: 'Wrong Password' });
     if (!existingUser.isVarified)
-      return res.status(400).send('Email is Not Verified !');
+      return res.status(400).send({ error: 'Email is Not Verified !' });
 
     const accessToken = jwt.sign(
       {
@@ -115,14 +119,15 @@ const LoginController = async (req, res) => {
       createdAt: existingUser.createdAt,
       updatedAt: existingUser.updatedAt,
     };
+
     res.status(200).send({
-      message: 'Login Successfull',
+      success: 'Login Successfull',
       user: loggedUser,
-      existingUser,
+      // existingUser,
       accessToken,
     });
   } catch (error) {
-    res.status(500).send('Server error');
+    res.status(500).send({ error: 'Server error' });
   }
 };
 
@@ -188,6 +193,7 @@ const Update = async (req, res) => {
 
       const result = await cloudinary.uploader.upload(req.file.path);
       existingUser.avatar = result.url;
+
       fs.unlinkSync(req.file.path);
     }
     existingUser.save();
@@ -207,4 +213,4 @@ module.exports = {
   Update,
 };
 
-// time:done video nxt--> 25
+// time:40:12
