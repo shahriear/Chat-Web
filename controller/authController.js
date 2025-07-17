@@ -180,28 +180,27 @@ const resetPass = async (req, res) => {
 //Update profile ========
 const Update = async (req, res) => {
   const { fullName, password } = req.body;
-  try {
-    const existingUser = await userSchema.findById(req.user.id);
 
-    if (fullName) existingUser.fullName = fullName.trim();
-    if (password) existingUser.password = password;
+  const existingUser = await userSchema.findById(req.user.id);
 
-    if (req.file.path) {
+  if (fullName) existingUser.fullName = fullName.trim();
+  if (password) existingUser.password = password;
+
+  if (req?.file?.path) {
+    if (existingUser?.avatar)
       await cloudinary.uploader.destroy(
         existingUser.avatar.split('/').pop().split('.')[0]
       );
 
-      const result = await cloudinary.uploader.upload(req.file.path);
-      existingUser.avatar = result.url;
+    const result = await cloudinary.uploader.upload(req.file.path);
+    existingUser.avatar = result.url;
 
-      fs.unlinkSync(req.file.path);
-    }
-    existingUser.save();
-
-    res.status(200).send(existingUser);
-  } catch (error) {
-    res.status(500).send('Server error !');
+    fs.unlinkSync(req.file.path);
   }
+  existingUser.save();
+
+  res.status(200).send(existingUser);
+  console.log(existingUser.avatar);
 };
 
 module.exports = {

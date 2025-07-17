@@ -28,6 +28,8 @@ const createConversation = async (req, res) => {
 };
 
 const conversationList = async (req, res) => {
+  console.log(req.user);
+
   try {
     const conversation = await conversationSchema
       .find({
@@ -37,11 +39,11 @@ const conversationList = async (req, res) => {
       .populate('participent', 'fullName avatar email')
       .populate('lastMessage');
     if (!conversation) {
-      return res.status(400).send('No Conversation Found !');
+      return res.status(400).send({ error: 'No Conversation Found !' });
     }
     res.status(200).send(conversation);
   } catch (error) {
-    res.status(500).send('Server error');
+    res.status(500).send({ error: 'Server error' });
   }
 };
 module.exports = { createConversation, conversationList };
