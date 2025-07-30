@@ -7,7 +7,7 @@ const authMiddleware = (req, res, next) => {
     if (token) {
       jwt.verify(token, process.env.JWT_SEC, function (err, decoded) {
         if (err) {
-          req.status(400).send('Bad request!');
+          return res.status(400).send({ error: 'Bad request!' });
         }
 
         if (decoded.data) {
@@ -16,10 +16,10 @@ const authMiddleware = (req, res, next) => {
         }
       });
     } else {
-      res.status(400).send('Bad request!');
+      res.status(400).send({ error: 'Bad request!' });
     }
   } catch (error) {
-    res.status(500).send('Server error !');
+    res.status(500).send({ errr: 'Server error !' });
   }
 };
 module.exports = authMiddleware;
