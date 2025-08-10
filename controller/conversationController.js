@@ -33,7 +33,14 @@ const createConversation = async (req, res) => {
       participent: participentData._id,
     });
     await conversation.save();
-    res.status(200).send(conversation);
+    // console.log('conversation =>>', conversation);
+
+    const populatedConversation = await conversation.populate([
+      { path: 'creator', select: 'fullName avatar email' },
+      { path: 'participent', select: 'fullName avatar email' },
+      { path: 'lastMessage' },
+    ]);
+    res.status(200).send(populatedConversation);
   } catch (error) {
     res.status(500).send({ error: 'Server error' });
   }
@@ -51,7 +58,8 @@ const conversationList = async (req, res) => {
       })
       .populate('creator', 'fullName avatar email')
       .populate('participent', 'fullName avatar email')
-      .populate('lastMessage');
+      .populate('lastMessage')
+      .sort({ updatedAt: -1 });
     if (!conversation) {
       return res.status(400).send({ error: 'No Conversation Found !' });
     }

@@ -4,6 +4,7 @@ const messageSchema = require('../models/messageSchema');
 const sendMessage = async (req, res) => {
   try {
     const { reciverId, content, conversationId } = req.body;
+    // return console.log(reciverId, content, conversationId);
     if (!reciverId || !content || !conversationId) {
       return res.status(400).send('All fields required');
     }
@@ -23,9 +24,9 @@ const sendMessage = async (req, res) => {
     await conversationSchema.findByIdAndUpdate(existingConversation._id, {
       lastMessage: message,
     });
-    global.io.emit('new_message', { message, conversationId: conversationId });
+    global.io.to(conversationId).emit('new_message', message);
 
-    res.status(200).send({ message, conversationId: conversationId });
+    res.status(200).send(message);
   } catch (error) {
     res.status(500).send('Server error !');
   }

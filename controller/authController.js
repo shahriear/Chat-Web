@@ -85,6 +85,8 @@ const verifyEmailAddress = async (req, res) => {
 
 const LoginController = async (req, res) => {
   const { email, password } = req.body;
+  console.log(email, password);
+
   try {
     if (!email) return res.status(400).send({ error: 'Email is required!' });
     if (emailValidators(email))
@@ -180,27 +182,38 @@ const resetPass = async (req, res) => {
 //Update profile ========
 const Update = async (req, res) => {
   const { fullName, password } = req.body;
+  // console.log(fullName, password);
+  // return;
 
-  const existingUser = await userSchema.findById(req.user.id);
+  try {
+    const existingUser = await userSchema.findById(req.user.id);
 
-  if (fullName) existingUser.fullName = fullName.trim();
-  if (password) existingUser.password = password;
+    if (fullName) existingUser.fullName = fullName.trim().split(/\s+/).join('');
+    if (password) existingUser.password = password;
+    console.log(req.file);
+    if (req?.file?.path) {
+      //mubin koraicili avatar
 
-  if (req?.file?.path) {
-    if (existingUser?.avatar)
-      await cloudinary.uploader.destroy(
-        existingUser.avatar.split('/').pop().split('.')[0]
-      );
+      //delete existing avatar if exist
+      // if (existingUser?.avatar)
+      if (existingUser.avatar)
+        await cloudinary.uploader.destroy(
+          existingUser.avatar.split('/').pop().split('.')[0]
+        );
 
-    const result = await cloudinary.uploader.upload(req.file.path);
-    existingUser.avatar = result.url;
+      //upload avatar
+      const result = await cloudinary.uploader.upload(req.file.path);
+      existingUser.avatar = result.url;
 
-    fs.unlinkSync(req.file.path);
+      fs.unlinkSync(req.file.path);
+    }
+    existingUser.save();
+
+    res.status(200).send(existingUser);
+    // console.log(existingUser.avatar);
+  } catch (error) {
+    console.log({ error: 'Server error' });
   }
-  existingUser.save();
-
-  res.status(200).send(existingUser);
-  console.log(existingUser.avatar);
 };
 
 module.exports = {
@@ -211,5 +224,3 @@ module.exports = {
   resetPass,
   Update,
 };
-
-// time:40:12
